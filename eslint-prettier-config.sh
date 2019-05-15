@@ -18,8 +18,8 @@ echo
 echo "Which package manager are you using?"
 select package_command_choices in "Yarn" "npm" "Cancel"; do
   case $package_command_choices in
-    Yarn ) pkg_cmd='yarn add'; break;;
-    npm ) pkg_cmd='npm install'; break;;
+    Yarn ) pkg_cmd='yarn add'; global_pkg_cmd='yarn global add'; break;;
+    npm ) pkg_cmd='npm install'; global_pkg_cmd='npm --global install' break;;
     Cancel ) exit;;
   esac
 done
@@ -97,17 +97,17 @@ echo
 echo -e "${GREEN}Configuring your development environment... ${NC}"
 
 echo
-echo -e "1/5 ${LCYAN}ESLint & Prettier Installation... ${NC}"
+echo -e "1/6 ${LCYAN}ESLint & Prettier Installation... ${NC}"
 echo
 $pkg_cmd -D eslint prettier
 
 echo
-echo -e "2/5 ${YELLOW}Conforming to Airbnb's JavaScript Style Guide... ${NC}"
+echo -e "2/6 ${YELLOW}Conforming to Airbnb's JavaScript Style Guide... ${NC}"
 echo
 $pkg_cmd -D eslint-config-airbnb eslint-plugin-jsx-a11y eslint-plugin-import eslint-plugin-react babel-eslint
 
 echo
-echo -e "3/5 ${LCYAN}Making ESlint and Prettier play nice with each other... ${NC}"
+echo -e "3/6 ${LCYAN}Making ESlint and Prettier play nice with each other... ${NC}"
 echo "See https://github.com/prettier/eslint-config-prettier for more details."
 echo
 $pkg_cmd -D eslint-config-prettier eslint-plugin-prettier
@@ -117,7 +117,7 @@ if [ "$skip_eslint_setup" == "true" ]; then
   break
 else
   echo
-  echo -e "4/5 ${YELLOW}Building your .eslintrc${config_extension} file...${NC}"
+  echo -e "4/6 ${YELLOW}Building your .eslintrc${config_extension} file...${NC}"
   > ".eslintrc${config_extension}" # truncates existing file (or creates empty)
 
   echo ${config_opening}'
@@ -154,15 +154,25 @@ else
 }' >> .eslintrc${config_extension}
 fi
 
+echo
+echo -e "5/6 ${YELLOW}Making ESlint and Prettier run after each commit... ${NC}"
+echo
+$pkg_cmd -D husky lint-staged pretty-quick
+
+$global_pkg_cmd json
+json -I -f package.json -e 'this.husky={ "hooks": { "pre-commit": "NODE_ENV=production lint-staged" } }'
+json -I -f package.json -e 'this["lint-staged"]={"*.{js,jsx}": ["pretty-quick --staged", "eslint src/ --fix", "git add"] }'
+
 
 if [ "$skip_prettier_setup" == "true" ]; then
   break
 else
-  echo -e "5/5 ${YELLOW}Building your .prettierrc${config_extension} file... ${NC}"
+  echo -e "6/6 ${YELLOW}Building your .prettierrc${config_extension} file... ${NC}"
   > .prettierrc${config_extension} # truncates existing file (or creates empty)
 
   echo ${config_opening}'
   "printWidth": '${max_len_val}',
+  "semi": false,
   "singleQuote": true,
   "trailingComma": "'${trailing_comma_pref}'"
 }' >> .prettierrc${config_extension}
